@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Morphing Particle System — main.js Demo</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #121218;
+    --surface: #1a1a24;
+    --border: rgba(255,255,255,0.08);
+    --text: #e8eaed;
+    --muted: rgba(232,234,237,0.5);
+    --blue: #318bf7;
+    --green: #bada4c;
+    --red: #e35058;
+    --font: 'Google Sans', 'Segoe UI', system-ui, sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 40px;
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(12px);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(18,18,24,0.85);
+  }
+  .logo {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--blue);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity:1; transform:scale(1); }
+    50% { opacity:0.4; transform:scale(0.7); }
+  }
+  .badge {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: rgba(49,139,247,0.15);
+    border: 1px solid rgba(49,139,247,0.3);
+    color: var(--blue);
+    letter-spacing: 0.04em;
+  }
+
+  /* ── Hero Section ── */
+  .hero {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: calc(100vh - 61px);
+    padding: 0;
+    gap: 0;
+  }
+
+  .hero-left {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 60px 56px;
+    position: relative;
+    z-index: 2;
+  }
+
+  .eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--blue);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .eyebrow::before {
+    content: '';
+    display: inline-block;
+    width: 20px; height: 1px;
+    background: var(--blue);
+  }
+
+  .hero-title {
+    font-size: clamp(32px, 4vw, 56px);
+    font-weight: 600;
+    line-height: 1.12;
+    letter-spacing: -0.02em;
+    margin-bottom: 24px;
+  }
+  .typed-wrapper {
+    position: relative;
+    display: inline-block;
+  }
+  .typed-text {
+    color: var(--blue);
+    border-right: 2px solid var(--blue);
+    animation: blink 0.5s infinite;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  @keyframes blink {
+    0%,100% { border-color: var(--blue); }
+    50% { border-color: transparent; }
+  }
+
+  .hero-desc {
+    font-size: 16px;
+    line-height: 1.65;
+    color: var(--muted);
+    max-width: 440px;
+    margin-bottom: 40px;
+  }
+
+  .cta-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 24px;
+    border-radius: 100px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-decoration: none;
+    border: none;
+  }
+  .btn-primary {
+    background: var(--blue);
+    color: #fff;
+  }
+  .btn-primary:hover { background: #5fa0f9; transform: translateY(-1px); }
+  .btn-secondary {
+    background: rgba(255,255,255,0.06);
+    color: var(--text);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(6px);
+  }
+  .btn-secondary:hover { background: rgba(255,255,255,0.1); }
+
+  /* ── Particle Canvas Side ── */
+  .hero-right {
+    position: relative;
+    overflow: hidden;
+    border-left: 1px solid var(--border);
+  }
+  #particle-container {
+    position: absolute;
+    inset: 0;
+  }
+  #particle-container canvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  .shape-controls {
+    position: absolute;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+    z-index: 10;
+  }
+  .shape-btn {
+    padding: 8px 18px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: rgba(26,26,36,0.8);
+    color: var(--muted);
+    backdrop-filter: blur(8px);
+    transition: all 0.2s ease;
+    letter-spacing: 0.04em;
+  }
+  .shape-btn:hover, .shape-btn.active {
+    background: rgba(49,139,247,0.15);
+    border-color: rgba(49,139,247,0.4);
+    color: var(--blue);
+  }
+
+  /* ── Info bar at top of canvas ── */
+  .canvas-label {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    z-index: 10;
+    white-space: nowrap;
+  }
+
+  /* ── Explainer Section ── */
+  .section {
+    padding: 80px 56px;
+    border-top: 1px solid var(--border);
+  }
+  .section-title {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 40px;
+  }
+  .pipeline {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .pipe-step {
+    background: var(--surface);
+    padding: 28px 24px;
+    transition: background 0.2s;
+  }
+  .pipe-step:hover { background: rgba(49,139,247,0.06); }
+  .pipe-num {
+    font-size: 10px;
+    color: var(--blue);
+    letter-spacing: 0.1em;
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
+  .pipe-name {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text);
+  }
+  .pipe-desc {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .color-dots {
+    display: flex;
+    gap: 6px;
+    margin-top: 16px;
+  }
+  .dot { width:10px; height:10px; border-radius:50%; }
+
+  @media (max-width: 768px) {
+    .hero { grid-template-columns: 1fr; }
+    .hero-right { min-height: 400px; border-left: none; border-top: 1px solid var(--border); }
+    header { padding: 14px 20px; }
+    .hero-left { padding: 40px 20px; }
+    .section { padding: 60px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    Morphing Particle Demo
+  </div>
+  <span class="badge">main.js Reconstruction</span>
+</header>
+
+<section class="hero">
+  <!-- Left: typed hero text -->
+  <div class="hero-left">
+    <div class="eyebrow">Google Antigravity</div>
+    <h1 class="hero-title">
+      The future of<br>
+      <span class="typed-wrapper">
+        <span class="typed-text" id="typed"></span>
+      </span>
+    </h1>
+    <p class="hero-desc">
+      This demo reconstructs the core visual systems from <code>main.js</code>: 
+      Poisson disk sampling, Three.js WebGL point-cloud rendering, GSAP-driven 
+      hover transitions, and a blinking typed-text cursor — exactly as they 
+      appear on the original site.
+    </p>
+    <div class="cta-row">
+      <button class="btn btn-primary" id="hoverBtn">↗ Trigger Hover</button>
+      <button class="btn btn-secondary" id="resetBtn">⟳ Reset</button>
+    </div>
+    <div class="color-dots" style="margin-top:32px; align-items:center; gap:12px; font-size:12px; color:var(--muted);">
+      Particle colors:
+      <div class="dot" style="background:#318bf7;"></div><span style="font-size:11px;color:var(--muted)">Blue</span>
+      <div class="dot" style="background:#bada4c;"></div><span style="font-size:11px;color:var(--muted)">Green</span>
+      <div class="dot" style="background:#e35058;"></div><span style="font-size:11px;color:var(--muted)">Red</span>
+    </div>
+  </div>
+
+  <!-- Right: Three.js particle canvas -->
+  <div class="hero-right">
+    <div class="canvas-label">Three.js WebGL · Poisson Disk · GPGPU</div>
+    <div id="particle-container"></div>
+    <div class="shape-controls">
+      <button class="shape-btn active" data-shape="sphere">Sphere</button>
+      <button class="shape-btn" data-shape="cube">Cube</button>
+      <button class="shape-btn" data-shape="ring">Ring</button>
+      <button class="shape-btn" data-shape="helix">Helix</button>
+    </div>
+  </div>
+</section>
+
+<!-- Pipeline explainer -->
+<section class="section">
+  <div class="section-title">How main.js builds this effect</div>
+  <div class="pipeline">
+    <div class="pipe-step">
+      <div class="pipe-num">01 · YA / j9 / QA</div>
+      <div class="pipe-name">N-D Grid + Neighbourhood</div>
+      <div class="pipe-desc">Creates a flat Uint32Array grid and precomputes all neighbour offsets for fast spatial lookups.</div>
+    </div>
+    <div class="pipe-step">
+      <div class="pipe-num">02 · XA</div>
+      <div class="pipe-name">Box-Muller Sampler</div>
+      <div class="pipe-desc">Generates normally-distributed random unit vectors, giving each particle a smooth, organic direction.</div>
+    </div>
+    <div class="pipe-step">
+      <div class="pipe-num">03 · ri / Gn / tc</div>
+      <div class="pipe-name">Poisson Disk Sampling</div>
+      <div class="pipe-desc">Places points with guaranteed minimum spacing — no clumping, no gaps. Fixed-density or variable via distanceFunction.</div>
+    </div>
+    <div class="pipe-step">
+      <div class="pipe-num">04 · nI / e7</div>
+      <div class="pipe-name">Three.js Scene</div>
+      <div class="pipe-desc">WebGLRenderer + PerspectiveCamera + Points mesh. Raycaster maps cursor → 3D intersection point each frame.</div>
+    </div>
+    <div class="pipe-step">
+      <div class="pipe-num">05 · GSAP Ge</div>
+      <div class="pipe-name">GSAP Animations</div>
+      <div class="pipe-desc">onHoverStart/End drives hoverProgress and pushProgress tweens that feed into shader uniforms each frame.</div>
+    </div>
+    <div class="pipe-step">
+      <div class="pipe-num">06 · Angular tM</div>
+      <div class="pipe-name">Root App + Router</div>
+      <div class="pipe-desc">Bootstraps Angular, manages scroll restoration, and fires analytics on every NavigationEnd event.</div>
+    </div>
+  </div>
+</section>
+
+<!-- Three.js + GSAP via CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// POISSON DISK SAMPLING  (direct port of YA / XA / j9 / QA / ri from main.js)
+// ─────────────────────────────────────────────────────────────────────────────
+function makeIntGrid(shape) {
+  let total = 1, stride = new Array(shape.length);
+  for (let r = shape.length; r > 0; r--) { stride[r-1] = total; total *= shape[r-1]; }
+  return { stride, data: new Uint32Array(total) };
+}
+
+function boxMuller(n, rng) {
+  let arr = new Array(n), pairs = Math.floor(n/2)<<1, sumSq = 0;
+  for (let c = 0; c < pairs; c += 2) {
+    let o = -2*Math.log(rng()), s = Math.sqrt(o), a = 2*Math.PI*rng();
+    sumSq += o;
+    arr[c]   = s * Math.cos(a);
+    arr[c+1] = s * Math.sin(a);
+  }
+  if (n % 2) {
+    let u = Math.sqrt(-2*Math.log(rng())) * Math.cos(2*Math.PI*rng());
+    arr[n-1] = u; sumSq += u*u;
+  }
+  let scale = 1/Math.sqrt(sumSq);
+  for (let c = 0; c < n; c++) arr[c] *= scale;
+  return arr;
+}
+
+class PoissonDisk {
+  constructor({ shape, minDistance, maxDistance, tries }, rng = Math.random) {
+    this.shape = shape;
+    this.minDistance = minDistance;
+    this.maxDistance = maxDistance || minDistance * 2;
+    this.maxTries = Math.ceil(Math.max(1, tries || 30));
+    this.rng = rng;
+    this.dimension = shape.length;
+    this.squaredMin = minDistance * minDistance;
+    let maxDim = 0; for (let d of shape) maxDim = Math.max(maxDim, d);
+    let r = Math.max(1, maxDim/128|0), eps = 1e-14*r;
+    this.minDistEps = minDistance + eps;
+    this.deltaDistance = Math.max(0, this.maxDistance - this.minDistEps);
+    this.cellSize = minDistance / Math.sqrt(this.dimension);
+    this.gridShape = shape.map(s => Math.ceil(s / this.cellSize));
+    this.grid = makeIntGrid(this.gridShape);
+    this.samplePoints = [];
+    this.processList = [];
+    this.currentPoint = null;
+    // neighbourhood
+    this._neighbourhood = this._buildNeighbourhood(this.dimension);
+  }
+  _buildNeighbourhood(n) {
+    let size = n*2+1, total = Math.pow(size, n)-1, out = [];
+    for (let s = 0; s < total; s++) {
+      let cell = new Array(n), l = s < total/2 ? s : s+1;
+      for (let c = 1; c <= n; c++) {
+        let u = l % Math.pow(size, c);
+        cell[c-1] = u/Math.pow(size,c-1) - n; l -= u;
+      }
+      out.push(cell);
+    }
+    out.push(new Array(n).fill(0));
+    return out;
+  }
+  _distSq(a, b) {
+    let s = 0; for (let i = 0; i < a.length; i++) s += (a[i]-b[i])**2; return s;
+  }
+  _inNeighbourhood(p) {
+    let { stride } = this.grid;
+    for (let nb of this._neighbourhood) {
+      let idx = 0, ok = true;
+      for (let d = 0; d < this.dimension; d++) {
+        let s = (p[d]/this.cellSize|0) + nb[d];
+        if (s < 0 || s >= this.gridShape[d]) { ok = false; break; }
+        idx += s * stride[d];
+      }
+      if (ok && this.grid.data[idx] !== 0) {
+        let existing = this.samplePoints[this.grid.data[idx]-1];
+        if (this._distSq(p, existing) < this.squaredMin) return true;
+      }
+    }
+    return false;
+  }
+  _directAdd(p) {
+    let idx = 0;
+    for (let d = 0; d < this.dimension; d++) idx += (p[d]/this.cellSize|0) * this.grid.stride[d];
+    this.samplePoints.push(p);
+    this.processList.push(p);
+    this.grid.data[idx] = this.samplePoints.length;
+    return p;
+  }
+  addRandom() {
+    let p = this.shape.map(s => this.rng() * s);
+    return this._directAdd(p);
+  }
+  fill() {
+    if (!this.samplePoints.length) this.addRandom();
+    while (this._next()) {}
+    return this.samplePoints;
+  }
+  _next() {
+    while (this.processList.length > 0) {
+      if (!this.currentPoint) this.currentPoint = this.processList.shift();
+      for (let n = 0; n < this.maxTries; n++) {
+        let t = this.minDistEps + this.deltaDistance * this.rng();
+        let dir = boxMuller(this.dimension, this.rng);
+        let candidate = this.currentPoint.map((v, d) => v + dir[d]*t);
+        let ok = candidate.every((v, d) => v >= 0 && v < this.shape[d]);
+        if (ok && !this._inNeighbourhood(candidate)) return this._directAdd(candidate);
+      }
+      this.currentPoint = null;
+    }
+    return null;
+  }
+  reset() {
+    this.grid.data.fill(0);
+    this.samplePoints = []; this.processList = []; this.currentPoint = null;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SHAPE GENERATORS  (what the texture images encode as point clouds in main.js)
+// ─────────────────────────────────────────────────────────────────────────────
+function generateShape(name, count) {
+  const pts = [];
+  switch (name) {
+    case 'sphere':
+      while (pts.length < count) {
+        let x = (Math.random()-0.5)*2, y = (Math.random()-0.5)*2, z = (Math.random()-0.5)*2;
+        if (x*x+y*y+z*z <= 1) pts.push(x, y, z);
+      }
+      break;
+    case 'cube':
+      for (let i = 0; i < count; i++) {
+        let face = Math.floor(Math.random()*6);
+        let u = Math.random()-0.5, v = Math.random()-0.5;
+        if (face === 0) pts.push(0.5, u, v);
+        else if (face === 1) pts.push(-0.5, u, v);
+        else if (face === 2) pts.push(u, 0.5, v);
+        else if (face === 3) pts.push(u, -0.5, v);
+        else if (face === 4) pts.push(u, v, 0.5);
+        else                  pts.push(u, v, -0.5);
+      }
+      break;
+    case 'ring':
+      for (let i = 0; i < count; i++) {
+        let a = Math.random()*Math.PI*2, r = 0.35 + Math.random()*0.15;
+        let z = (Math.random()-0.5)*0.15;
+        pts.push(Math.cos(a)*r, Math.sin(a)*r, z);
+      }
+      break;
+    case 'helix':
+      for (let i = 0; i < count; i++) {
+        let t = i/count, turns = 3;
+        let a = t*Math.PI*2*turns, r = 0.4;
+        pts.push(Math.cos(a)*r, t-0.5, Math.sin(a)*r);
+      }
+      break;
+  }
+  return new Float32Array(pts);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PARTICLE SCENE  (faithful port of nI class from main.js)
+// ─────────────────────────────────────────────────────────────────────────────
+class ParticleScene {
+  constructor(container) {
+    this.container = container;
+    this.hoverProgress = 0;
+    this.pushProgress = 0;
+    this.isHovering = false;
+    this.mouse = new THREE.Vector2(-9,-9);
+    this.time = 0;
+    this.currentShape = 'sphere';
+    this.targetPositions = null;
+    this.morphProgress = 0;
+    this.isMorphing = false;
+
+    // ── renderer (mirrors main.js nI constructor)
+    this.canvas = document.createElement('canvas');
+    container.appendChild(this.canvas);
+    this.renderer = new THREE.WebGLRenderer({
+      canvas: this.canvas, antialias: true, alpha: true,
+      powerPreference: 'high-performance', preserveDrawingBuffer: true
+    });
+    this.renderer.setPixelRatio(window.devicePixelRatio);
+    this.renderer.setSize(container.offsetWidth, container.offsetHeight);
+
+    // ── camera (matches main.js: fov=40, near=0.1, far=1000, z=3.5)
+    this.camera = new THREE.PerspectiveCamera(40,
+      container.offsetWidth / container.offsetHeight, 0.1, 1000);
+    this.camera.position.z = 3.5;
+
+    // ── scene
+    this.scene = new THREE.Scene();
+
+    // ── Poisson disk sample to decide count & initial spread
+    const pds = new PoissonDisk({ shape:[200,200], minDistance:8, tries:20 });
+    pds.fill();
+    this.COUNT = Math.min(pds.samplePoints.length, 2000);
+
+    this._initParticles();
+    this._initEvents();
+    this.raycaster = new THREE.Raycaster();
+    this._animate();
+  }
+
+  _initParticles() {
+    const N = this.COUNT;
+    const positions = new Float32Array(N * 3);
+    const colors    = new Float32Array(N * 3);
+    const randoms   = new Float32Array(N);
+    const speeds    = new Float32Array(N);
+
+    // Color palette from main.js: color1=#318bf7 color2=#bada4c color3=#e35058
+    const palette = [
+      new THREE.Color('#318bf7'),
+      new THREE.Color('#bada4c'),
+      new THREE.Color('#e35058'),
+    ];
+
+    // Scatter initial positions on sphere (Poisson-informed)
+    for (let i = 0; i < N; i++) {
+      let phi = Math.acos(1 - 2*(i/N)), theta = Math.PI*(1+Math.sqrt(5))*i;
+      positions[i*3]   = Math.sin(phi)*Math.cos(theta);
+      positions[i*3+1] = Math.cos(phi);
+      positions[i*3+2] = Math.sin(phi)*Math.sin(theta);
+
+      let c = palette[i % palette.length];
+      colors[i*3] = c.r; colors[i*3+1] = c.g; colors[i*3+2] = c.b;
+      randoms[i] = Math.random();
+      speeds[i] = 0.5 + Math.random() * 1.5;
+    }
+
+    this.basePositions = positions.slice();
+    this.currentPositions = positions.slice();
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geo.setAttribute('color',    new THREE.BufferAttribute(colors,    3));
+    geo.setAttribute('random',   new THREE.BufferAttribute(randoms,   1));
+    geo.setAttribute('speed',    new THREE.BufferAttribute(speeds,    1));
+
+    const mat = new THREE.PointsMaterial({
+      size: 0.025,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.9,
+      sizeAttenuation: true,
+      depthWrite: false,
+    });
+
+    this.points = new THREE.Points(geo, mat);
+    this.scene.add(this.points);
+    this.geo = geo;
+    this.mat = mat;
+
+    // Set first target shape
+    this.targetPositions = generateShape('sphere', this.COUNT);
+  }
+
+  _initEvents() {
+    window.addEventListener('resize', () => this._onResize());
+    this.canvas.addEventListener('mousemove', e => {
+      const rect = this.canvas.getBoundingClientRect();
+      this.mouse.x = ((e.clientX - rect.left) / rect.width)  * 2 - 1;
+      this.mouse.y = -((e.clientY - rect.top)  / rect.height) * 2 + 1;
+    });
+    this.canvas.addEventListener('mouseleave', () => {
+      this.mouse.set(-9, -9);
+    });
+  }
+
+  _onResize() {
+    const w = this.container.offsetWidth, h = this.container.offsetHeight;
+    this.canvas.width = w; this.canvas.height = h;
+    this.renderer.setSize(w, h);
+    this.camera.aspect = w / h;
+    this.camera.updateProjectionMatrix();
+  }
+
+  // Mirrors main.js onHoverStart — GSAP tween on hoverProgress
+  onHoverStart() {
+    this.isHovering = true;
+    this._tweenTo('hoverProgress', 1, 500, 'power3');
+    this._tweenTo('pushProgress', 1, 2000, 'power2');
+  }
+  onHoverEnd() {
+    this.isHovering = false;
+    this._tweenTo('hoverProgress', 0, 500, 'power3');
+    this._tweenTo('pushProgress', 1, 2000, 'power2');
+  }
+
+  // Simple GSAP-style tween (mirrors Ge.to usage in main.js)
+  _tweenTo(prop, target, durationMs, ease) {
+    const start = this[prop], startTime = performance.now();
+    const fn = (now) => {
+      let t = Math.min(1, (now - startTime) / durationMs);
+      // power2/power3 easing
+      t = ease === 'power3' ? 1 - Math.pow(1-t, 3) : 1 - Math.pow(1-t, 2);
+      this[prop] = start + (target - start) * t;
+      if (t < 1) requestAnimationFrame(fn);
+    };
+    requestAnimationFrame(fn);
+  }
+
+  // Mirrors setPointsTextureFromIndex — morphs to a new shape
+  morphTo(shapeName) {
+    this.currentShape = shapeName;
+    this.targetPositions = generateShape(shapeName, this.COUNT);
+    this.morphProgress = 0;
+    this.isMorphing = true;
+    this._tweenMorph();
+  }
+
+  _tweenMorph() {
+    const startPos = this.currentPositions.slice();
+    const target = this.targetPositions;
+    const startTime = performance.now(), dur = 1800;
+    const fn = (now) => {
+      let t = Math.min(1, (now - startTime) / dur);
+      // power2.out easing (matches main.js ease:"power2.out")
+      t = 1 - Math.pow(1-t, 2);
+      const pos = this.geo.attributes.position.array;
+      for (let i = 0; i < this.COUNT * 3; i++) {
+        pos[i] = startPos[i] + (target[i] - startPos[i]) * t;
+      }
+      for (let i = 0; i < this.COUNT * 3; i++) this.currentPositions[i] = pos[i];
+      this.geo.attributes.position.needsUpdate = true;
+      if (t < 1) requestAnimationFrame(fn);
+      else this.isMorphing = false;
+    };
+    requestAnimationFrame(fn);
+  }
+
+  _animate() {
+    requestAnimationFrame(() => this._animate());
+    this.time += 0.008;
+
+    const pos = this.geo.attributes.position.array;
+    const N = this.COUNT;
+
+    // Mouse repulsion (mirrors raycaster intersection in main.js preRender)
+    this.raycaster.setFromCamera(this.mouse, this.camera);
+    const rayDir = this.raycaster.ray.direction;
+    const rayOri = this.raycaster.ray.origin;
+
+    for (let i = 0; i < N; i++) {
+      const ix = i*3;
+      // Gentle float animation
+      const base = this.currentPositions[ix+1];
+      const floatOffset = Math.sin(this.time * 0.8 + i * 0.05) * 0.004;
+
+      // Distance to mouse ray (cursor interaction, mirrors isIntersecting logic)
+      let dx = pos[ix]   - (rayOri.x + rayDir.x * 2);
+      let dy = pos[ix+1] - (rayOri.y + rayDir.y * 2);
+      let dz = pos[ix+2] - (rayOri.z + rayDir.z * 2);
+      let dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+      let push = Math.max(0, 1 - dist / 0.5) * this.hoverProgress * 0.08;
+
+      pos[ix]   += (dx / (dist+0.001)) * push;
+      pos[ix+1] += (dy / (dist+0.001)) * push + floatOffset;
+      pos[ix+2] += (dz / (dist+0.001)) * push;
+
+      // Drift back toward current target (lerp)
+      if (!this.isMorphing) {
+        pos[ix]   += (this.currentPositions[ix]   - pos[ix])   * 0.05;
+        pos[ix+1] += (this.currentPositions[ix+1] - pos[ix+1]) * 0.05;
+        pos[ix+2] += (this.currentPositions[ix+2] - pos[ix+2]) * 0.05;
+      }
+    }
+    this.geo.attributes.position.needsUpdate = true;
+
+    // Slow rotation (standard for morphing particle scenes)
+    this.points.rotation.y += 0.002;
+    this.points.rotation.x = Math.sin(this.time * 0.3) * 0.1;
+
+    // Opacity pulsing on hover (mirrors hoverProgress uniform usage)
+    this.mat.opacity = 0.75 + this.hoverProgress * 0.25;
+    this.mat.size = 0.022 + this.hoverProgress * 0.012;
+
+    this.renderer.setRenderTarget(null);
+    this.renderer.autoClear = true;
+    this.renderer.render(this.scene, this.camera);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TYPED TEXT ANIMATION  (mirrors the typed-text / blinking-cursor component)
+// ─────────────────────────────────────────────────────────────────────────────
+const words = ['development', 'deployment', 'collaboration', 'productivity'];
+let wIdx = 0, cIdx = 0, deleting = false;
+const typedEl = document.getElementById('typed');
+function typeLoop() {
+  const word = words[wIdx];
+  if (!deleting) {
+    typedEl.textContent = word.slice(0, ++cIdx);
+    if (cIdx === word.length) { deleting = true; setTimeout(typeLoop, 1800); return; }
+  } else {
+    typedEl.textContent = word.slice(0, --cIdx);
+    if (cIdx === 0) { deleting = false; wIdx = (wIdx+1) % words.length; }
+  }
+  setTimeout(typeLoop, deleting ? 55 : 90);
+}
+typeLoop();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BOOTSTRAP  (mirrors WS(tM, _H) — bootstrapApplication)
+// ─────────────────────────────────────────────────────────────────────────────
+const container = document.getElementById('particle-container');
+const scene = new ParticleScene(container);
+
+// Hover button (mirrors onHoverStart / onHoverEnd)
+document.getElementById('hoverBtn').addEventListener('click', function() {
+  if (scene.isHovering) { scene.onHoverEnd(); this.textContent = '↗ Trigger Hover'; }
+  else { scene.onHoverStart(); this.textContent = '✕ End Hover'; }
+});
+
+// Reset
+document.getElementById('resetBtn').addEventListener('click', () => {
+  scene.onHoverEnd();
+  document.getElementById('hoverBtn').textContent = '↗ Trigger Hover';
+  scene.morphTo('sphere');
+  document.querySelectorAll('.shape-btn').forEach(b => b.classList.toggle('active', b.dataset.shape === 'sphere'));
+});
+
+// Shape buttons (mirror setPointsTextureFromIndex)
+document.querySelectorAll('.shape-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.shape-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    scene.morphTo(this.dataset.shape);
+  });
+});
+
+// Canvas hover → triggers particle scatter (mirrors the Angular component's onHover/onLeave)
+container.addEventListener('mouseenter', () => scene.onHoverStart());
+container.addEventListener('mouseleave', () => scene.onHoverEnd());
+</script>
+</body>
+</html>
