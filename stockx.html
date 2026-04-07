@@ -1389,7 +1389,6 @@ let authState = { loggedIn: false, token: null, user: null };
 let currentDetailSymbol = '';
 let previousPage = 'dashboard';
 let globeInst = null;
-let globeLanding = null;
 let currentTradeTab = 'buy';
 let currentDetailPrice = 2450.30;
 
@@ -1493,7 +1492,6 @@ function showPage(page) {
     el.style.display = 'flex';
     el.style.flexDirection = 'column';
   }
-  if (page === 'landing') initLandingGlobe();
   if (page === 'dashboard') { initDashboardGlobe(); setTimeout(hideGlobeHint, 6000); }
   if (page === 'stocks') renderStocksList();
 }
@@ -2045,12 +2043,12 @@ window.addEventListener('resize', () => {
 // LANDING PAGE — TYPING ANIMATION
 // ─────────────────────────────────────────────────────────
 const LANDING_PHRASES = [
-  "Get started with\nreal-time stock values.",
-  "Track live analytics\nacross the globe.",
-  "Trade across 7\nmajor stock exchanges.",
-  "Your portfolio,\nalways one step ahead.",
-  "One platform.\nEvery market. All yours.",
-  "Spin the globe.\nFind your next investment."
+  "Get started with real-time stock values.",
+  "Track live analytics across the globe.",
+  "Trade across 7 major stock exchanges.",
+  "Your portfolio, always one step ahead.",
+  "One platform. Every market. All yours.",
+  "Spin the globe. Find your next investment."
 ];
 
 const LANDING_SUBS = [
@@ -2069,28 +2067,25 @@ const ltSubEl = document.getElementById('land-typed-sub');
 function landingTypeLoop() {
   if (!ltEl) return;
   const phrase = LANDING_PHRASES[ltIdx];
-  const displayPhrase = phrase.replace(/\n/g, ' ');
 
   if (!ltDeleting) {
-    ltEl.innerHTML = displayPhrase.slice(0, ++ltCharIdx).replace(/ /g, '&nbsp;');
-    if (ltCharIdx === displayPhrase.length) {
+    ltEl.innerHTML = phrase.slice(0, ++ltCharIdx).replace(/ /g, '&nbsp;');
+    if (ltCharIdx === phrase.length) {
       ltDeleting = true;
       setTimeout(landingTypeLoop, 2200);
       return;
     }
   } else {
-    ltEl.innerHTML = displayPhrase.slice(0, --ltCharIdx).replace(/ /g, '&nbsp;');
+    ltEl.innerHTML = phrase.slice(0, --ltCharIdx).replace(/ /g, '&nbsp;');
     if (ltCharIdx === 0) {
       ltDeleting = false;
       ltIdx = (ltIdx + 1) % LANDING_PHRASES.length;
       if (ltSubEl) {
         ltSubEl.style.opacity = '0';
         setTimeout(() => {
-          if (ltSubEl) {
-            ltSubEl.textContent = LANDING_SUBS[ltIdx];
-            ltSubEl.style.opacity = '1';
-            ltSubEl.style.transition = 'opacity 0.4s ease';
-          }
+          ltSubEl.textContent = LANDING_SUBS[ltIdx];
+          ltSubEl.style.opacity = '1';
+          ltSubEl.style.transition = 'opacity 0.4s ease';
         }, 200);
       }
     }
