@@ -99,7 +99,7 @@ html, body {
   content: ''; width: 24px; height: 1px; background: var(--accent);
 }
 .land-title {
-  font-size: clamp(36px, 4.5vw, 60px); font-weight: 800;
+  font-size: clamp(35px, 4.5vw, 59px); font-weight: 800;
   line-height: 1.08; letter-spacing: -0.03em;
   margin-bottom: 28px; color: var(--white);
 }
@@ -662,6 +662,9 @@ html, body {
 ════════════════════════════════════════ */
 .land-typed-title {
   min-height: 2.3em;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 .land-typed-cursor {
   display: inline-block;
@@ -1519,6 +1522,12 @@ function showFieldErr(id, show) {
   const el = document.getElementById(id);
   if (el) el.classList.toggle('show', show);
 }
+// NOTE: SHA-256 is used here only for local demo-mode credential storage.
+// It is NOT suitable for production password hashing. Never use this pattern in a real backend.
+async function hashPass(pass) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pass));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
 
 async function handleLogin() {
   const email = document.getElementById('login-email').value.trim();
@@ -1537,9 +1546,10 @@ async function handleLogin() {
       body: JSON.stringify({ email, password: pass })
     });
     const data = await res.json();
-    if (res.ok && data.accessToken) {
-      authState = { loggedIn: true, token: data.accessToken, user: data.user };
-      localStorage.setItem('sx_token', data.accessToken);
+    const token = data.accessToken || data.token;
+    if (res.ok && token) {
+      authState = { loggedIn: true, token, user: data.user };
+      localStorage.setItem('sx_token', token);
       localStorage.setItem('sx_user', JSON.stringify(data.user));
       if (data.user?.email) {
         document.getElementById('user-avatar').textContent = data.user.email[0].toUpperCase();
@@ -1550,11 +1560,26 @@ async function handleLogin() {
       showToast(data.message || 'Invalid credentials', 'error');
     }
   } catch {
-    // Demo mode fallback
-    authState = { loggedIn: true, token: 'demo', user: { email, name: 'Demo User' } };
-    document.getElementById('user-avatar').textContent = email[0].toUpperCase();
-    showToast('Logged in (demo mode)', 'success');
-    showPage('dashboard');
+    // Demo mode fallback — validate against locally registered accounts
+    const demoUsers = JSON.parse(localStorage.getItem('sx_demo_users') || '{}');
+    const demoUser = demoUsers[email.toLowerCase()];
+    const ph = await hashPass(pass);
+    if (demoUser && demoUser.ph === ph) {
+      authState = { loggedIn: true, token: 'demo', user: { email, name: demoUser.name } };
+      document.getElementById('user-avatar').textContent = demoUser.name[0].toUpperCase();
+      showToast('Welcome back! 👋 (demo mode)', 'success');
+      showPage('dashboard');
+    } else if (demoUser) {
+      // account exists but password is wrong
+      showToast('Invalid email or password', 'error');
+      btn.textContent = 'Sign In'; btn.disabled = false;
+      return;
+    } else {
+      authState = { loggedIn: true, token: 'demo', user: { email, name: 'Demo User' } };
+      document.getElementById('user-avatar').textContent = email[0].toUpperCase();
+      showToast('Logged in (demo mode)', 'success');
+      showPage('dashboard');
+    }
   }
   btn.textContent = 'Sign In'; btn.disabled = false;
 }
@@ -1587,6 +1612,11 @@ async function handleRegister() {
       showToast(data.message || 'Registration failed', 'error');
     }
   } catch {
+    // Demo mode — persist the new account locally so login can validate it
+    const demoUsers = JSON.parse(localStorage.getItem('sx_demo_users') || '{}');
+    const ph = await hashPass(pass);
+    demoUsers[email.toLowerCase()] = { name, ph };
+    localStorage.setItem('sx_demo_users', JSON.stringify(demoUsers));
     authState = { loggedIn: true, token: 'demo', user: { email, name } };
     document.getElementById('user-avatar').textContent = name[0].toUpperCase();
     showToast('Account created (demo mode)! 🎉', 'success');
@@ -2045,14 +2075,14 @@ function landingTypeLoop() {
   const phrase = LANDING_PHRASES[ltIdx];
 
   if (!ltDeleting) {
-    ltEl.innerHTML = phrase.slice(0, ++ltCharIdx).replace(/ /g, '&nbsp;');
+    ltEl.textContent = phrase.slice(0, ++ltCharIdx);
     if (ltCharIdx === phrase.length) {
       ltDeleting = true;
       setTimeout(landingTypeLoop, 2200);
       return;
     }
   } else {
-    ltEl.innerHTML = phrase.slice(0, --ltCharIdx).replace(/ /g, '&nbsp;');
+    ltEl.textContent = phrase.slice(0, --ltCharIdx);
     if (ltCharIdx === 0) {
       ltDeleting = false;
       ltIdx = (ltIdx + 1) % LANDING_PHRASES.length;
