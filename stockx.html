@@ -766,7 +766,7 @@ html, body {
       StockX
     </div>
     <div class="land-nav-links">
-      <a class="land-nav-link" onclick="showAuth()">Markets</a>
+      <a class="land-nav-link" onclick="showPage('stocks')">Markets</a>
       <a class="land-nav-link" href="#">Features</a>
       <a class="land-nav-link" href="#">Pricing</a>
     </div>
@@ -790,7 +790,7 @@ html, body {
         <button class="btn btn-primary" onclick="showAuth('register')">
           Get Started Free →
         </button>
-        <button class="btn btn-secondary" onclick="showAuth()">
+        <button class="btn btn-secondary" onclick="showPage('stocks')">
           Browse Markets
         </button>
       </div>
@@ -1474,7 +1474,14 @@ function showPage(page) {
   const PROTECTED = ['dashboard', 'stocks', 'stock-detail'];
   if (PROTECTED.includes(page) && !authState.loggedIn) {
     const savedToken = localStorage.getItem('sx_token');
-    if (!savedToken) { showAuth(); return; }
+    const savedUser  = localStorage.getItem('sx_user');
+    if (savedToken && savedUser) {
+      // Restore session inline so navigation proceeds
+      try { authState = { loggedIn: true, token: savedToken, user: JSON.parse(savedUser) }; } catch {}
+    } else {
+      showAuth();
+      return;
+    }
   }
 
   document.querySelectorAll('[id^="page-"]').forEach(el => {
