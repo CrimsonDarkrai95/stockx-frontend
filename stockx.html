@@ -99,7 +99,7 @@ html, body {
   content: ''; width: 24px; height: 1px; background: var(--accent);
 }
 .land-title {
-  font-size: clamp(35px, 4.5vw, 59px); font-weight: 800;
+  font-size: clamp(34px, 4.5vw, 58px); font-weight: 800;
   line-height: 1.08; letter-spacing: -0.03em;
   margin-bottom: 28px; color: var(--white);
 }
@@ -1545,6 +1545,7 @@ async function handleLogin() {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ email, password: pass })
     });
+    if (res.status === 404) throw new Error('login endpoint not found');
     const data = await res.json();
     const token = data.accessToken || data.token;
     if (res.ok && token) {
@@ -1606,6 +1607,10 @@ async function handleRegister() {
     });
     const data = await res.json();
     if (res.ok) {
+      const demoUsers = JSON.parse(localStorage.getItem('sx_demo_users') || '{}');
+      const ph = await hashPass(pass);
+      demoUsers[email.toLowerCase()] = { name, ph };
+      localStorage.setItem('sx_demo_users', JSON.stringify(demoUsers));
       showToast('Account created! Please sign in.', 'success');
       switchAuthTab('login');
     } else {
