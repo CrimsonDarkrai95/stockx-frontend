@@ -1545,12 +1545,10 @@ async function handleLogin() {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ email, password: pass })
     });
-    if (res.status === 404) throw new Error('login endpoint not found');
     const data = await res.json();
-    const token = data.accessToken || data.token;
-    if (res.ok && token) {
-      authState = { loggedIn: true, token, user: data.user };
-      localStorage.setItem('sx_token', token);
+    if (res.ok && data.accessToken) {
+      authState = { loggedIn: true, token: data.accessToken, user: data.user };
+      localStorage.setItem('sx_token', data.accessToken);
       localStorage.setItem('sx_user', JSON.stringify(data.user));
       if (data.user?.email) {
         document.getElementById('user-avatar').textContent = data.user.email[0].toUpperCase();
@@ -1561,26 +1559,11 @@ async function handleLogin() {
       showToast(data.message || 'Invalid credentials', 'error');
     }
   } catch {
-    // Demo mode fallback — validate against locally registered accounts
-    const demoUsers = JSON.parse(localStorage.getItem('sx_demo_users') || '{}');
-    const demoUser = demoUsers[email.toLowerCase()];
-    const ph = await hashPass(pass);
-    if (demoUser && demoUser.ph === ph) {
-      authState = { loggedIn: true, token: 'demo', user: { email, name: demoUser.name } };
-      document.getElementById('user-avatar').textContent = demoUser.name[0].toUpperCase();
-      showToast('Welcome back! 👋 (demo mode)', 'success');
-      showPage('dashboard');
-    } else if (demoUser) {
-      // account exists but password is wrong
-      showToast('Invalid email or password', 'error');
-      btn.textContent = 'Sign In'; btn.disabled = false;
-      return;
-    } else {
-      authState = { loggedIn: true, token: 'demo', user: { email, name: 'Demo User' } };
-      document.getElementById('user-avatar').textContent = email[0].toUpperCase();
-      showToast('Logged in (demo mode)', 'success');
-      showPage('dashboard');
-    }
+    // Demo mode fallback
+    authState = { loggedIn: true, token: 'demo', user: { email, name: 'Demo User' } };
+    document.getElementById('user-avatar').textContent = email[0].toUpperCase();
+    showToast('Logged in (demo mode)', 'success');
+    showPage('dashboard');
   }
   btn.textContent = 'Sign In'; btn.disabled = false;
 }
