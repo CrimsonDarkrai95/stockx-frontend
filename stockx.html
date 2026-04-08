@@ -1547,11 +1547,14 @@ async function handleLogin() {
       body: JSON.stringify({ email, password: pass })
     });
     const data = await res.json();
-    const token = data.accessToken || data.token;
-    if (res.ok && token) {
-      authState = { loggedIn: true, token, user: data.user };
-      localStorage.setItem('sx_token', token);
-      localStorage.setItem('sx_user', JSON.stringify(data.user));
+// Backend wraps in { success, data: { accessToken, user } }
+    const payload = data.data || data;
+    const token = payload.accessToken || payload.token || data.accessToken || data.token;
+    const user  = payload.user || data.user;
+if (res.ok && token) {
+  authState = { loggedIn: true, token, user };
+  localStorage.setItem('sx_token', token);
+  localStorage.setItem('sx_user', JSON.stringify(user));
       if (data.user?.email) {
         document.getElementById('user-avatar').textContent = data.user.email[0].toUpperCase();
       }
